@@ -25,13 +25,17 @@
   header{
     flex:0 0 auto; background:var(--panel); border-bottom:1px solid var(--line);
     padding:6px 10px; display:flex; align-items:center; gap:8px;
+    overflow-x:auto; overflow-y:hidden; white-space:nowrap;
   }
+  header > *{flex:0 0 auto;}
   header h1{font-size:14px;margin:0 12px 0 0;font-weight:700;letter-spacing:.04em;}
-  #main{flex:1 1 auto; display:flex; min-height:0;}
-  #left{flex:0 0 168px; background:var(--panel); border-right:1px solid var(--line); overflow-y:auto; padding:8px;}
-  #center{flex:1 1 auto; position:relative; min-width:0;}
-  #right{flex:0 0 272px; background:var(--panel); border-left:1px solid var(--line); display:flex; flex-direction:column; min-height:0;}
-  canvas{display:block;}
+  #main{flex:1 1 auto; display:flex; min-height:0; min-width:0;}
+  #left{flex:0 0 168px; width:168px; background:var(--panel); border-right:1px solid var(--line); overflow-y:auto; padding:8px;}
+  #center{flex:1 1 auto; position:relative; min-width:0; overflow:hidden;}
+  #right{flex:0 0 auto; width:272px; max-width:40vw; background:var(--panel); border-left:1px solid var(--line); display:flex; flex-direction:column; min-height:0; overflow:hidden;}
+  /* canvasは絶対配置でレイアウトから切り離す。
+     （通常フローに置くと、描画バッファ幅×DPRの実寸がflexを押し広げ、右パネルを画面外へ追い出してしまう） */
+  #center canvas{display:block; position:absolute; top:0; left:0; width:100%; height:100%;}
   .sec{font-size:11px;color:var(--dim);margin:10px 0 5px;letter-spacing:.08em;font-weight:700;}
   .sec:first-child{margin-top:0;}
   button{
@@ -47,7 +51,7 @@
   .grid button{padding:6px 2px; font-size:11px;}
 
   /* tree */
-  #treeWrap{flex:0 0 44%; overflow:auto; border-bottom:1px solid var(--line); padding:8px;}
+  #treeWrap{flex:1 1 auto; overflow:auto; border-bottom:1px solid var(--line); padding:8px; min-height:80px;}
   .node{
     display:flex; align-items:center; gap:5px; padding:3px 5px; border-radius:4px;
     cursor:pointer; user-select:none; white-space:nowrap;
@@ -61,7 +65,7 @@
   .kids{margin-left:12px; border-left:1px dotted #4a5162; padding-left:4px;}
 
   /* inspector */
-  #insp{flex:1 1 auto; overflow-y:auto; padding:8px;}
+  #insp{flex:0 1 auto; overflow-y:auto; padding:8px; max-height:70vh;}
   .row{display:flex; align-items:center; gap:5px; margin-bottom:4px;}
   .row label{flex:0 0 62px; color:var(--dim); font-size:11px;}
   input[type=text],input[type=number]{
@@ -112,10 +116,13 @@
   <button id="bRot" title="E">回転</button>
   <button id="bScale" title="R">拡縮</button>
   <span style="width:8px"></span>
-  <button id="bGroup">グループ化</button>
-  <button id="bEmpty">空グループ</button>
   <button id="bDup">複製</button>
   <button id="bDel" title="Delete">削除</button>
+  <span style="width:8px"></span>
+  <input type="text" id="projName" value="model" style="width:90px" title="保存ファイル名">
+  <button id="bSave">保存(.json)</button>
+  <button id="bLoad">読込(.json)</button>
+  <input type="file" id="fileInput" accept="application/json,.json" style="display:none">
   <span style="flex:1"></span>
   <button id="bHelp" title="使い方を表示">使い方</button>
   <label style="color:var(--dim);font-size:11px">関数名</label>
@@ -131,7 +138,7 @@
     <div class="row"><label style="flex:1">グリッド</label><input type="checkbox" id="cbGrid" checked></div>
     <div class="row"><label style="flex:1">ワイヤー</label><input type="checkbox" id="cbWire"></div>
     <div class="hint">
-      左ドラッグ：回転<br>右ドラッグ：平行移動<br>ホイール：ズーム<br>クリック：パーツ選択<br>Shift+クリック：選択中のパーツを、クリックした相手の子にする<br>W/E/R：移動・回転・拡縮<br>Delete：削除<br>Ctrl+Z / Ctrl+Y：元に戻す
+      左ドラッグ：回転<br>右ドラッグ：平行移動<br>ホイール：ズーム<br>クリック：パーツ選択<br>Shift+クリック：選択中のパーツを、クリックした相手の子にする<br>W/E/R：移動・回転・拡縮<br>Delete：削除<br>Ctrl+Z / Ctrl+Y：元に戻す<br>Ctrl+S：保存 / Ctrl+O：読込
     </div>
   </div>
 
@@ -190,6 +197,7 @@
       <h3>④.5 回転の軸をずらす（ピボット）</h3>
       <p>腕や脚のようなパーツは、パーツの真ん中ではなく「肩」「付け根」を軸に回したいことがあります。パーツを選択し、「ピボット」欄の <b>-X / +X / -Y / +Y / -Z / +Z</b> のいずれかを押すと、見た目の位置は変えずに回転・拡縮の基準点だけをその端に移動できます。「中心」で元に戻ります。</p>
       <p>使い方の例：腕のパーツを作り、体の中心から見て外側の端（例：-X側）にピボットを設定してから、体の横（肩の位置）に配置すると、そのパーツを回転させたときに肩を軸にした振り子のような動きになります。</p>
+      <p>見た目の位置は変わらず、回転・拡縮の中心だけが移動します。肩や関節に付けるパーツは端に設定すると、その場所を軸に回転できます。</p>
 
       <h3>⑤ グループにまとめる（親子構造）</h3>
       <p>新しく追加したパーツは、常にルート直下に置かれます（選択中のパーツの子には自動で入りません）。親子関係は、以下のどちらかの方法で自分で作ります。</p>
@@ -197,15 +205,20 @@
         <li><b>ビューポート上で操作</b>：子にしたいパーツを選択した状態で、親にしたいパーツを <b>Shiftキーを押しながらクリック</b>します。「触りながら」その場で親子付けができます。</li>
         <li><b>階層ツリー上で操作</b>：右上のツリーで、パーツをドラッグして別のパーツの上にドロップします。</li>
       </ul>
-      <p>複数パーツをまとめて選択して1つのグループに入れたい場合は、パーツを選択して「グループ化」を押すと、新しい空グループの中にそのパーツが入ります。頭・耳・目をまとめて「頭グループ」にしておくと、頭グループを動かした際に中のパーツも一緒についてきます。</p>
+      <p>複数パーツをまとめて動かしたい場合は、Shift+クリックまたはツリー上のドラッグ&ドロップを繰り返して、1つのパーツ（またはグループ）の下に他のパーツをまとめて入れていきます。頭・耳・目をまとめて「頭」の子にしておくと、頭を動かした際に耳・目も一緒についてきます。</p>
       <p>親子関係のルール：<b>親を動かすと子も一緒に動きますが、子を動かしても親は動きません。</b></p>
 
       <h3>⑥ 色をあとから変えられるようにする（引数化）</h3>
       <p>パーツを選択し「色」欄の「引数化」にチェックを入れ、名前（例：<code>furColor</code>）を付けると、出力コードでその色が関数の引数になります。同じ名前を複数パーツに付ければ、まとめて色を変更できます。</p>
+      <p>チェックを入れた色は、出力コードで関数の引数になります。同じ引数名を複数パーツに付けると、まとめて色を変えられます。</p>
 
       <h3>⑦ コードを取り出す</h3>
-      <p>右上「関数名」を好きな名前（例：<code>createPanda</code>）にして「コード出力」を押すと、Three.jsのコードが表示されます。「コピー」でそのままゲームのHTMLに貼り付けるか、「.js をダウンロード」でファイルとして保存できます。</p>
+      <p>右上「関数名」を好きな名前（例：<code>createPanda</code>）にして「コード出力」を押すと、Three.jsのコードが表示されます。「コピー」でそのままゲームのHTMLに貼り付けるか、「.js をダウンロード」でファイルとして保存できます。これは<b>Three.jsゲームにそのまま組み込むための最終成果物</b>です。</p>
       <p>保存したファイルは、ゲーム側のHTML内 <code>&lt;script type="module"&gt;</code> の中にそのまま貼り付けてお使いいただけます。</p>
+
+      <h3>⑧ 作業中のデータを保存・読込する</h3>
+      <p>「保存(.json)」を押すと、現在作業中のシーン全体（パーツの形状・位置・色・階層すべて）を <code>.json</code> ファイルとして保存できます。これは<b>このモデラー専用の保存形式</b>で、「読込(.json)」で同じファイルを開けば、続きから編集を再開できます。</p>
+      <p>普段の作業はこの<b>JSON保存・読込</b>を使い、完成してThree.jsのゲームに組み込みたくなったときだけ、⑦の「コード出力」を使う、という使い分けがおすすめです。</p>
 
       <h3>その他の操作</h3>
       <ul>
@@ -345,6 +358,7 @@ scene.add(boxHelper);
 
 function resize(){
   const w = host.clientWidth, h = host.clientHeight;
+  if(w === 0 || h === 0) return;
   renderer.setSize(w, h, false);
   camera.aspect = w / Math.max(h, 1);
   camera.updateProjectionMatrix();
@@ -378,25 +392,6 @@ function addPart(type){
   root.add(mesh);
   select(mesh);
   rebuildTree(); pushUndo();
-}
-
-function addEmptyGroup(){
-  const g = new THREE.Group();
-  g.userData = { kind:'group', name:uniqueName('group') };
-  root.add(g);
-  select(g); rebuildTree(); pushUndo();
-}
-
-// 選択パーツを新規グループで包む（親の位置に空グループを作り、そこへ入れる）
-function groupSelected(){
-  if(!selected || selected === root){ toast('パーツを選択してください'); return; }
-  const parent = selected.parent;
-  const g = new THREE.Group();
-  g.userData = { kind:'group', name:uniqueName('group') };
-  g.position.copy(selected.position);
-  parent.add(g);
-  g.attach(selected);   // ワールド変換を保ったまま移動
-  select(g); rebuildTree(); pushUndo();
 }
 
 function duplicateSelected(){
@@ -562,77 +557,11 @@ function buildInspector(){
   }
   const ud = selected.userData;
 
-  sec('基本');
   const nameIn = mkText(ud.name);
   rowEl('名前', nameIn);
   nameIn.onchange = () => { ud.name = nameIn.value.trim() || ud.name; rebuildTree(); pushUndo(); };
 
-  sec('変形');
-  transformInputs = { pos:[], rot:[], scl:[] };
-  rowEl('位置', xyzEl(transformInputs.pos, () => {
-    selected.position.set(...transformInputs.pos.map(n => num(n)));
-    onTransformEdited();
-  }, 0.05));
-  rowEl('回転°', xyzEl(transformInputs.rot, () => {
-    selected.rotation.set(...transformInputs.rot.map(n => num(n) * Math.PI / 180));
-    onTransformEdited();
-  }, 1));
-  rowEl('拡大率', xyzEl(transformInputs.scl, () => {
-    selected.scale.set(...transformInputs.scl.map(n => num(n) || 0.001));
-    onTransformEdited();
-  }, 0.05));
-  refreshTransformInputs();
-
   if(selected.isMesh){
-    sec('ピボット（回転・拡縮の基準点）');
-    const pivWrap = document.createElement('div');
-    pivWrap.style.cssText = 'display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:6px;';
-    const pivDefs = [['center','中心'],['-x','-X'],['+x','+X'],['-y','-Y'],['+y','+Y'],['-z','-Z'],['+z','+Z']];
-    pivDefs.forEach(([dir,label]) => {
-      const b = document.createElement('button');
-      b.textContent = label;
-      b.style.padding = '5px 2px';
-      b.style.fontSize = '11px';
-      if((ud.pivot || 'center') === dir) b.classList.add('pri');
-      b.onclick = () => {
-        applyPivot(selected, dir === 'center' ? null : dir);
-        boxHelper.setFromObject(selected);
-        refreshTransformInputs();
-        buildInspector();
-        pushUndo();
-      };
-      pivWrap.appendChild(b);
-    });
-    inspEl.appendChild(pivWrap);
-    const pivHint = document.createElement('div');
-    pivHint.className = 'hint';
-    pivHint.style.marginTop = '0';
-    pivHint.textContent = '見た目の位置は変わらず、回転・拡縮の中心だけが移動します。肩や関節に付けるパーツは端に設定すると、その場所を軸に回転できます。';
-    inspEl.appendChild(pivHint);
-
-    sec('形状（' + GEO[ud.geoType].label + '）');
-    GEO[ud.geoType].params.forEach(pd => {
-      const inp = mkNum(ud.geoParams[pd.key], pd.step);
-      if(pd.int) inp.min = 0;
-      rowEl(pd.label, inp);
-      inp.onchange = () => {
-        let v = num(inp);
-        if(pd.int) v = Math.max(pd.key === 'detail' ? 0 : 3, Math.round(v));
-        inp.value = v;
-        ud.geoParams[pd.key] = v;
-        selected.geometry.dispose();
-        selected.geometry = buildGeometry(ud.geoType, ud.geoParams);
-        if(ud.pivot && ud.pivot !== 'center'){
-          const dir = ud.pivot;
-          ud.pivotOffset = new THREE.Vector3(0,0,0);
-          applyPivot(selected, dir);
-        }
-        boxHelper.setFromObject(selected);
-        pushUndo();
-      };
-    });
-
-    sec('色');
     const setCol = v => {
       selected.material.color.set(v);
       col.value = '#' + selected.material.color.getHexString();
@@ -673,10 +602,71 @@ function buildInspector(){
     };
     pn.onchange = () => { ud.colorParam = sanitizeIdent(pn.value); pn.value = ud.colorParam; pushUndo(); };
 
-    const h = document.createElement('div');
-    h.className = 'hint';
-    h.textContent = 'チェックを入れた色は、出力コードで関数の引数になります。同じ引数名を複数パーツに付けると、まとめて色を変えられます。';
-    inspEl.appendChild(h);
+    sec('ピボット（回転・拡縮の基準点）');
+    const pivWrap = document.createElement('div');
+    pivWrap.style.cssText = 'display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:6px;';
+    const pivDefs = [['center','中心'],['+x','+X'],['+y','+Y'],['+z','+Z'], null,['-x','-X'],['-y','-Y'],['-z','-Z']];
+    pivDefs.forEach(item => {
+      if(!item){
+        const spacer = document.createElement('div');
+        pivWrap.appendChild(spacer);
+        return;
+      }
+      const [dir, label] = item;
+      const b = document.createElement('button');
+      b.textContent = label;
+      b.style.padding = '5px 2px';
+      b.style.fontSize = '11px';
+      if((ud.pivot || 'center') === dir) b.classList.add('pri');
+      b.onclick = () => {
+        applyPivot(selected, dir === 'center' ? null : dir);
+        boxHelper.setFromObject(selected);
+        refreshTransformInputs();
+        buildInspector();
+        pushUndo();
+      };
+      pivWrap.appendChild(b);
+    });
+    inspEl.appendChild(pivWrap);
+  }
+
+  transformInputs = { pos:[], rot:[], scl:[] };
+  rowEl('位置', xyzEl(transformInputs.pos, () => {
+    selected.position.set(...transformInputs.pos.map(n => num(n)));
+    onTransformEdited();
+  }, 0.05));
+  rowEl('回転°', xyzEl(transformInputs.rot, () => {
+    selected.rotation.set(...transformInputs.rot.map(n => num(n) * Math.PI / 180));
+    onTransformEdited();
+  }, 1));
+  rowEl('拡大率', xyzEl(transformInputs.scl, () => {
+    selected.scale.set(...transformInputs.scl.map(n => num(n) || 0.001));
+    onTransformEdited();
+  }, 0.05));
+  refreshTransformInputs();
+
+  if(selected.isMesh){
+    sec('形状（' + GEO[ud.geoType].label + '）');
+    GEO[ud.geoType].params.forEach(pd => {
+      const inp = mkNum(ud.geoParams[pd.key], pd.step);
+      if(pd.int) inp.min = 0;
+      rowEl(pd.label, inp);
+      inp.onchange = () => {
+        let v = num(inp);
+        if(pd.int) v = Math.max(pd.key === 'detail' ? 0 : 3, Math.round(v));
+        inp.value = v;
+        ud.geoParams[pd.key] = v;
+        selected.geometry.dispose();
+        selected.geometry = buildGeometry(ud.geoType, ud.geoParams);
+        if(ud.pivot && ud.pivot !== 'center'){
+          const dir = ud.pivot;
+          ud.pivotOffset = new THREE.Vector3(0,0,0);
+          applyPivot(selected, dir);
+        }
+        boxHelper.setFromObject(selected);
+        pushUndo();
+      };
+    });
   }
 
   function sec(t){ const d = document.createElement('div'); d.className='sec'; d.textContent=t; inspEl.appendChild(d); }
@@ -724,9 +714,8 @@ function sanitizeIdent(s){
    ============================================================ */
 const COLOR_PRESETS = [
   { group:'カラー', colors:[
-    ['白','#ffffff'], ['黒','#1a1a1a'], ['グレー','#9098a3'], ['ベージュ','#e8c79a'],
-    ['赤','#e8384f'], ['オレンジ','#f5941f'], ['黄','#f6d743'], ['黄緑','#a9d14a'],
-    ['みどり','#4caf50'], ['水色','#7ec4e8'], ['あお','#3f7fd1'], ['ピンク','#f4a6c1'],
+    ['赤','#e8384f'], ['ピンク','#f4a6c1'], ['オレンジ','#f5941f'], ['黄','#f6d743'], ['ベージュ','#e8c79a'], ['白','#ffffff'],
+    ['あお','#3f7fd1'], ['水色','#7ec4e8'], ['みどり','#4caf50'], ['黄緑','#a9d14a'], ['グレー','#9098a3'], ['黒','#1a1a1a'],
   ]},
 ];
 
@@ -734,10 +723,6 @@ function buildColorPresetUI(onPick){
   const wrap = document.createElement('div');
   wrap.style.cssText = 'margin-bottom:8px;';
   COLOR_PRESETS.forEach(g => {
-    const label = document.createElement('div');
-    label.textContent = g.group;
-    label.style.cssText = 'font-size:10px;color:var(--dim);margin:6px 0 3px;';
-    wrap.appendChild(label);
     const row = document.createElement('div');
     row.style.cssText = 'display:grid;grid-template-columns:repeat(6,1fr);gap:4px;';
     g.colors.forEach(([name, hexv]) => {
@@ -830,6 +815,46 @@ function restore(json){
   const s = st.sel ? nodeAt(st.sel) : null;
   selected = null;
   select(s);
+}
+
+/* ---- ファイルとしての保存・読込（このモデラー独自のJSON形式） ---- */
+function saveToFile(){
+  const data = {
+    format: 'simple3d-modeler',
+    version: 1,
+    savedAt: new Date().toISOString(),
+    tree: root.children
+      .filter(c => c.userData && (c.userData.kind==='mesh'||c.userData.kind==='group'))
+      .map(serializeNode),
+    seq: nameSeq
+  };
+  const name = (document.getElementById('projName')?.value || 'model').trim() || 'model';
+  const blob = new Blob([JSON.stringify(data, null, 1)], { type:'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name.replace(/\.json$/i,'') + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  toast(a.download + ' を保存しました');
+}
+
+function loadFromFile(file){
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const data = JSON.parse(reader.result);
+      if(!data || !Array.isArray(data.tree)) throw new Error('形式が違います');
+      [...root.children].forEach(c => { root.remove(c); disposeTree(c); });
+      data.tree.forEach(d => root.add(cloneNode(d)));
+      nameSeq = data.seq || {};
+      select(null);
+      undoStack = [snapshot()]; redoStack = [];
+      toast(file.name + ' を読み込みました');
+    }catch(err){
+      toast('読み込みに失敗しました：' + err.message);
+    }
+  };
+  reader.readAsText(file);
 }
 
 let undoStack = [], redoStack = [];
@@ -951,12 +976,18 @@ Object.entries(GEO).forEach(([type, d]) => {
 document.getElementById('bMove').onclick  = () => tc.setMode('translate');
 document.getElementById('bRot').onclick   = () => tc.setMode('rotate');
 document.getElementById('bScale').onclick = () => tc.setMode('scale');
-document.getElementById('bGroup').onclick = groupSelected;
-document.getElementById('bEmpty').onclick = addEmptyGroup;
 document.getElementById('bDup').onclick   = duplicateSelected;
 document.getElementById('bDel').onclick   = deleteSelected;
 document.getElementById('bUndo').onclick  = undo;
 document.getElementById('bRedo').onclick  = redo;
+
+document.getElementById('bSave').onclick = saveToFile;
+document.getElementById('bLoad').onclick = () => document.getElementById('fileInput').click();
+document.getElementById('fileInput').onchange = e => {
+  const f = e.target.files[0];
+  if(f) loadFromFile(f);
+  e.target.value = '';
+};
 
 document.getElementById('cbGrid').onchange = e => { grid.visible = e.target.checked; };
 document.getElementById('cbWire').onchange = e => {
@@ -1000,6 +1031,8 @@ addEventListener('keydown', e => {
   if(e.ctrlKey || e.metaKey){
     if(e.key.toLowerCase() === 'z'){ e.preventDefault(); e.shiftKey ? redo() : undo(); }
     if(e.key.toLowerCase() === 'y'){ e.preventDefault(); redo(); }
+    if(e.key.toLowerCase() === 's'){ e.preventDefault(); saveToFile(); }
+    if(e.key.toLowerCase() === 'o'){ e.preventDefault(); document.getElementById('fileInput').click(); }
     return;
   }
   if(e.key === 'Delete' || e.key === 'Backspace'){ e.preventDefault(); deleteSelected(); }
