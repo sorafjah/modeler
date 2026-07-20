@@ -378,6 +378,7 @@ orbit.target.set(0, 0.6, 0);
 
 const tc = new TransformControls(camera, renderer.domElement);
 tc.setSize(0.85);
+tc.showE = false; // 回転モードの外側の大きい輪（画面に正対する自由回転用）を非表示にし、X/Y/Zの3軸だけを使う
 scene.add(tc.getHelper ? tc.getHelper() : tc);
 tc.addEventListener('dragging-changed', e => { orbit.enabled = !e.value; });
 tc.addEventListener('objectChange', () => { refreshTransformInputs(); });
